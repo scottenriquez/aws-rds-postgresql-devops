@@ -8,10 +8,10 @@ steps:
 - script: |
     brew install cfn-lint
     cfn-lint --version
-    cfn-lint ec2-template.yml
+    cfn-lint ./database/rds-postgresql-template.yml
   displayName: 'Install and run cfn-lint'
 - script: |
     brew install ruby brew-gem
     brew gem install cfn-nag
-    cfn_nag ec2-template.yml
+    cfn_nag ./database/rds-postgresql-template.yml
   displayName: 'Install and run cfn-nag'
