@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: RDS Postgres Template
+Parameters:
+  pDbSnapshotIdentifier:
+    Description: ARN of the snapshot to create the database from (leaving blank will create an empty database)
+    Type: String
+    Default: ''
+  pDbAllocatedStorage:
+    Description: Allocated storage in gigabytes (ignored if a snapshot is used)
+    Type: Number
+    Default: 5
+    MinValue: 5
+    MaxValue: 16384
+  pDbInstanceClass:
+    Description: Instance class of the database server
+    Type: String
+    Default: db.m5.large
+    AllowedValues:
+      - db.m5.large
+      - db.m5.xlarge
+      - db.m5.2xlarge
+      - db.m5.4xlarge
+  pDbName:
+    Description: Database name (ignored if snapshot is used)
+    Type: String
+    Default: ''
+  pDbBackupRetentionPeriod:
+    Description: Number of days to keep automated snapshots of the database.
+    Type: Number
+    MinValue: 0
+    MaxValue: 35
+    Default: 35
+  pDbMasterUsername:
+    Description: Master username for the database (ignored if snapshot is used)
+    Type: String
+    NoEcho: true
+  pDbMasterUserPassword:
+    Description: Master password for the database (ignored if snapshot is used)
+    Type: String
+    NoEcho: true
+  pDbMultiAz:
+    Description: Deploy database to multiple availability zones
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  pDbOptionGroupName:
+    Description: Name of an existing database option group
+    Type: String
+    Default: ''
+  pDbParameterGroupName:
+    Description: Name of an existing database parameter group
+    Type: String
+    Default: ''
+  pPreferredBackupWindow:
+    Description: Daily time range in UTC to create automated backups
+    Type: String
+    Default: 09:00-10:00
+  pPreferredMaintenanceWindow:
+    Description: Weekly time range in UTC to perform system maintenance
+    Type: String
+    Default: sat:07:00-sat:07:30
+  pEngineVersion:
+    Description: Version of PostgreSQL
+    Type: String
+    Default: '12.4'
+    AllowedValues: ['12.2', '12.3', '12.4']
+Conditions:
+  cHasDBSnapshotIdentifier: !Not [!Equals [!Ref pDbSnapshotIdentifier, '']]
+  cHasDBOptionGroupName: !Not [!Equals [!Ref pDbOptionGroupName, '']]
+  cHasDBParameterGroupName: !Not [!Equals [!Ref pDbParameterGroupName, '']]
+Resources:
+  rDbInstance:
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: !If [cHasDBSnapshotIdentifier, !Ref AWS::NoValue, !Ref pDbAllocatedStorage]
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: true
+      BackupRetentionPeriod: !Ref pDbBackupRetentionPeriod
+      CopyTagsToSnapshot: true
+      DBInstanceClass: !Ref pDbInstanceClass
+      DBName: !If [cHasDBSnapshotIdentifier, !Ref AWS::NoValue, !Ref pDbName]
+      DBParameterGroupName: !If [cHasDBParameterGroupName, !Ref pDbParameterGroupName, !Ref AWS::NoValue]
+      DBSnapshotIdentifier: !If [cHasDBSnapshotIdentifier, !Ref pDbSnapshotIdentifier, !Ref AWS::NoValue]
+      EnableIAMDatabaseAuthentication: false
+      Engine: postgres
+      EngineVersion: !If [cHasDBSnapshotIdentifier, !Ref AWS::NoValue, !Ref pEngineVersion]
+      MasterUsername: !If [cHasDBSnapshotIdentifier, !Ref AWS::NoValue, !Ref pDbMasterUsername]
+      MasterUserPassword: !If [cHasDBSnapshotIdentifier, !Ref AWS::NoValue, !Ref pDbMasterUserPassword]
+      MultiAZ: !Ref pDbMultiAz
+      OptionGroupName: !If [cHasDBOptionGroupName, !Ref pDbOptionGroupName, !Ref AWS::NoValue]
+      PreferredBackupWindow: !Ref pPreferredBackupWindow
+      PreferredMaintenanceWindow: !Ref pPreferredMaintenanceWindow
+      StorageType: gp2
+Outputs:
+  StackName:
+    Description: Stack name
+    Value: !Sub ${AWS::StackName}
+  InstanceName:
+    Description: Database instance name
+    Value: !Ref rDbInstance
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceName'
