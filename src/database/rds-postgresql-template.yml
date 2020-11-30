@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: RDS Postgres Template
+Description: RDS PostgreSQL Template
 Parameters:
   pDbSnapshotIdentifier:
     Description: ARN of the snapshot to create the database from (leaving blank will create an empty database)
@@ -92,6 +92,7 @@ Resources:
       OptionGroupName: !If [cHasDBOptionGroupName, !Ref pDbOptionGroupName, !Ref AWS::NoValue]
       PreferredBackupWindow: !Ref pPreferredBackupWindow
       PreferredMaintenanceWindow: !Ref pPreferredMaintenanceWindow
+      StorageEncrypted: true
       StorageType: gp2
 Outputs:
   StackName:

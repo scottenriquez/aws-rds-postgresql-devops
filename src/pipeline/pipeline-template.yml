@@ -1,0 +1,121 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: RDS PostgreSQL CI/CD Pipeline Template
+Parameters:
+  pStagingBucketName:
+    Type: String
+  pStagingArtifactKey:
+    Type: String
+Resources:
+  rCodeCommitRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: DatabaseSolutionRepository 
+      RepositoryDescription: PostgreSQL database CloudFormation source code 
+      Code:
+        BranchName: main 
+        S3: 
+          Bucket: !Ref pStagingBucketName
+          Key: !Ref pStagingArtifactKey
+  rCodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: 2012-10-17
+        Statement: 
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - codepipeline.amazonaws.com
+                - cloudformation.amazonaws.com
+            Action:
+              - sts:AssumeRole
+  rCodePipelinePolicy: 
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: CodePipelinePolicy
+      PolicyDocument: 
+        Version: 2012-10-17
+        Statement: 
+          - Effect: Allow
+            Action:
+              - cloudformation:CreateStack
+              - cloudformation:DeleteStack
+              - cloudformation:DescribeStacks
+              - cloudformation:UpdateStack
+              - cloudformation:CreateChangeSet
+              - cloudformation:DeleteChangeSet
+              - cloudformation:DescribeChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:SetStackPolicy
+              - cloudformation:ValidateTemplate
+              - codebuild:BatchGetBuilds
+              - codebuild:StartBuild
+              - codecommit:GetRepository
+              - codecommit:GetBranch
+              - codecommit:GetCommit
+              - codecommit:UploadArchive
+              - codecommit:GetUploadArchiveStatus   
+              - codecommit:CancelUploadArchive
+              - iam:PassRole
+              - ec2:*
+              - rds:*
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - s3:*
+            Resource:
+              - !Sub arn:aws:s3:::${pStagingBucketName}
+              - !Sub arn:aws:s3:::${pStagingBucketName}/*
+      Roles: 
+        - !Ref rCodePipelineRole 
+  rCodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    DependsOn:
+      - rCodePipelinePolicy
+    Properties:
+      ArtifactStore:
+        Location: !Ref pStagingBucketName
+        Type: S3
+      Name: PostgreSQLPipeline
+      RoleArn: !GetAtt rCodePipelineRole.Arn
+      Stages:
+        - Name: Source 
+          Actions: 
+            - Name: SourceAction
+              ActionTypeId: 
+                Category: Source 
+                Owner: AWS 
+                Version: '1'
+                Provider: CodeCommit
+              OutputArtifacts: 
+                - Name: SourceOutput
+              Configuration:
+                RepositoryName: !GetAtt rCodeCommitRepository.Name
+                BranchName: main
+                PollForSourceChanges: false 
+              RunOrder: 1
+        - Name: DevelopmentDeployment
+          Actions: 
+          - Name: DevelopmentDeploymentAction 
+            InputArtifacts: 
+              - Name: SourceOutput 
+            ActionTypeId: 
+              Category: Deploy 
+              Owner: AWS 
+              Version: '1'
+              Provider: CloudFormation
+            Configuration:
+              ActionMode: CREATE_UPDATE
+              Capabilities: CAPABILITY_NAMED_IAM
+              ChangeSetName: pipeline-changeset
+              ParameterOverrides: 
+                '{
+                  "pDbMultiAz": "false",
+                  "pDbName": "database1",
+                  "pDbMasterUsername": "master",
+                  "pDbMasterUserPassword": "ThisIsUselessForYou"
+                }'
+              RoleArn: !GetAtt rCodePipelineRole.Arn
+              StackName: development-postgresql
+              TemplatePath: 'SourceOutput::database/rds-postgresql-template.yml'
+            RunOrder: 2

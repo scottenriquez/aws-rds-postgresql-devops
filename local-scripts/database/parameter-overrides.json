@@ -1,4 +1,6 @@
 [
+  "pDbMultiAz=false",
+  "pDbName=database1",
   "pDbMasterUsername=master",
   "pDbMasterUserPassword=ThisIsUselessForYou"
 ]

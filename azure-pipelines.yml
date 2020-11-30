@@ -8,10 +8,14 @@ steps:
 - script: |
     brew install cfn-lint
     cfn-lint --version
-    cfn-lint ./database/rds-postgresql-template.yml
+    cfn-lint src/database/rds-postgresql-template.yml
+    cfn-lint src/pipeline/staging-bucket-template.yml
+    cfn-lint src/pipeline/pipeline-template.yml
   displayName: 'Install and run cfn-lint'
 - script: |
     brew install ruby brew-gem
     brew gem install cfn-nag
-    cfn_nag ./database/rds-postgresql-template.yml
+    cfn_nag src/database/rds-postgresql-template.yml
+    cfn_nag src/pipeline/staging-bucket-template.yml
+    cfn_nag src/pipeline/pipeline-template.yml
   displayName: 'Install and run cfn-nag'

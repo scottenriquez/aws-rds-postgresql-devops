@@ -1,0 +1,10 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: RDS PostgreSQL CI/CD Staging Bucket Template
+Parameters:
+  pStagingBucketName:
+    Type: String
+Resources:
+  rS3StagingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref pStagingBucketName
